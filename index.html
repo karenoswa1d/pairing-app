@@ -1,303 +1,131 @@
-
-
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>カップルメーカー（2ラウンド）</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ペアリングアプリ</title>
   <style>
-    :root { --bg:#0f172a; --panel:#111827; --muted:#94a3b8; --ok:#16a34a; --warn:#f59e0b; --bad:#ef4444; --line:#1f2937; }
-    *{box-sizing:border-box;}
-    body{margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:#e5e7eb;}
-    header{padding:16px 20px; border-bottom:1px solid var(--line); display:flex; gap:12px; align-items:center; flex-wrap:wrap;}
-    header h1{font-size:18px; margin:0; font-weight:700;}
-    main{max-width:1100px; margin:0 auto; padding:20px;}
-    .grid{display:grid; grid-template-columns: 1fr 1fr; gap:16px;}
-    @media (max-width: 768px) {
-      .grid { grid-template-columns: 1fr; }
-    }
-    .card{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px;}
-    .card h2{margin:0 0 12px; font-size:16px;}
-    label{display:block; font-size:14px; color:#cbd5e1; margin:8px 0 6px;}
-    input[type="text"], select{
-      width:100%; padding:10px 12px; background:#0b1220; color:#e5e7eb; border:1px solid #253043; border-radius:10px; outline:none;
-    }
-    input[type="text"]:focus, select:focus{ border-color:#395079; }
-    button{
-      appearance:none; border:0; border-radius:10px; padding:10px 14px; cursor:pointer; font-weight:600;
-      background:#243b55; color:#e5e7eb; border:1px solid #395079;
-    }
-    button.primary{ background:#1f5c2e; border-color:#2f7a44; }
-    button.warn{ background:#5e3b15; border-color:#8a5a1f; }
-    button.danger{ background:#5b1f1f; border-color:#7a2f2f; }
-    button:disabled{ opacity:.5; cursor:not-allowed; }
-    .row{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
-    .hint{color:var(--muted); font-size:12px;}
-    .list{display:flex; flex-wrap:wrap; gap:8px;}
-    .chip{padding:6px 10px; border:1px solid #253043; border-radius:999px; background:#0b1220; font-size:13px;}
-    .chip.m{border-color:#2563eb;} .chip.f{border-color:#ec4899;}
-    .pair{display:flex; align-items:center; gap:8px; padding:10px 12px; background:#0b1220; border:1px dashed #253043; border-radius:12px;}
-    .pair .tag{font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid #253043; color:#cbd5e1;}
-    .pair .tag.round1{border-color:#2563eb;} .pair .tag.round2{border-color:#22c55e;}
-    .triad{border-color:var(--warn) !important;}
-    .muted{color:var(--muted);}
-    .divider{height:1px; background:var(--line); margin:12px 0;}
-    .small{font-size:12px;}
-    .section-title{display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;}
-    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;}
-    .sticky-footer{position:sticky; bottom:0; background:rgba(17,24,39,.8); backdrop-filter: blur(6px); border-top:1px solid var(--line); padding:10px 16px; display:flex; gap:8px; align-items:center; justify-content:space-between; border-radius:12px; margin-top:16px;}
-    .success{color:var(--ok);}
-    .error{color:var(--bad);}
+    body { font-family: sans-serif; padding: 20px; }
+    .highlight { background: #c8f7c5; padding: 5px; border-radius: 5px; }
+    .pair { margin: 5px 0; padding: 5px; border: 1px solid #ddd; border-radius: 5px; }
+    button { padding: 10px 20px; margin: 5px; }
   </style>
 </head>
 <body>
-<header>
-  <h1>カップルメーカー（2ラウンド）</h1>
-  <div class="hint">URL共有だけでOK。参加: <span id="count">0</span>人</div>
-</header>
+  <h2>ペアリングアプリ</h2>
 
-<main>
-  <div class="grid">
-    <!-- 左：参加・運営 -->
-    <section class="card">
-      <h2>1) ルーム</h2>
-      <div class="row">
-        <input id="roomId" class="mono" type="text" placeholder="例: team-2025-0815" />
-        <button id="createRoom">新規ルーム作成</button>
-        <button id="joinRoom">このルームに参加</button>
-      </div>
-      <div class="hint small">同じルームIDを全員で使います。作成者がIDを決めて共有してください。</div>
-      <div class="divider"></div>
-
-      <h2>2) 参加登録</h2>
-      <label>名前</label>
-      <input id="name" type="text" placeholder="お名前" />
-      <label>役割</label>
-      <select id="gender">
-        <option value="">選択してください</option>
-        <option value="M">リーダー</option>
-        <option value="F">パートナー</option>
+  <div id="setup">
+    <label>名前: <input type="text" id="name"></label><br/>
+    <label>
+      役割:
+      <select id="role">
+        <option value="leader">リーダー</option>
+        <option value="partner">パートナー</option>
       </select>
-      <div class="row" style="margin-top:8px;">
-        <button id="register" class="primary">参加する</button>
-        <button id="leave" class="danger">離脱</button>
-      </div>
-      <div id="me" class="hint small" style="margin-top:6px;"></div>
-
-      <div class="divider"></div>
-      <h2>3) ラウンド操作（主催者）</h2>
-      <div class="row">
-        <button id="startR1" class="primary">Round 1 ペア生成</button>
-        <button id="startR2" class="primary">Round 2 ペア生成（重複回避）</button>
-        <button id="clearPairs" class="warn">ペア表示をクリア</button>
-        <button id="resetRoom" class="danger">ルーム初期化</button>
-      </div>
-      <div class="hint small">※ 15〜30人を想定。奇数は三人組で調整します。Round 2 はできる限り同じ組み合わせを避けます。</div>
-    </section>
-
-    <!-- 右：参加者・結果 -->
-    <section class="card">
-      <div class="section-title">
-        <h2>参加者</h2>
-        <span class="hint small">L=リーダー / P=パートナー</span>
-      </div>
-      <div id="participants" class="list"></div>
-
-      <div class="divider"></div>
-      <div class="section-title">
-        <h2>結果</h2>
-        <span id="status" class="hint small">準備中</span>
-      </div>
-      <div id="pairsR1"></div>
-      <div id="pairsR2"></div>
-    </section>
+    </label><br/>
+    <button id="joinBtn">参加</button>
   </div>
 
-  <div class="sticky-footer card">
-    <div>
-      <div class="small">ルームID: <span id="roomIdLabel" class="mono"></span></div>
-      <div class="small">匿名ログイン: <span id="authState" class="mono"></span></div>
-    </div>
-    <div class="row">
-      <button id="copyLink">このルームを共有</button>
-      <button id="exportCsv">結果をCSV保存</button>
-    </div>
+  <div id="controls" style="display:none;">
+    <button onclick="makePairs(1)">Round 1 のペア作成</button>
+    <button onclick="makePairs(2)">Round 2 のペア作成</button>
   </div>
-</main>
 
-<!-- Firebase SDKs -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <h3>結果</h3>
+  <div id="results"></div>
 
-<script>
-/** Firebase設定（差し替え） */
-const firebaseConfig = {
-  apiKey: "AIzaSyAXKK19_CHOeY8BBRh_MuOWGSXe_aVV5rE",
-  authDomain: "makecouple-738b7.firebaseapp.com",
-  databaseURL: "https://makecouple-738b7-default-rtdb.firebaseio.com",
-  projectId: "makecouple-738b7",
-  appId: "1:592307602142:web:423c226103d6114f36b84f",
-};
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.database();
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, setDoc, doc, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-let myUid = null;
-let currentRoom = null;
-let myName = null;
-let myGender = null;
+    const firebaseConfig = {
+      apiKey: "AIzaSyAXKK19_CHOeY8BBRh_MuOWGSXe_aVV5rE",
+      authDomain: "makecouple-738b7.firebaseapp.com",
+      projectId: "makecouple-738b7",
+      appId: "1:592307602142:web:423c226103d6114f36b84f"
+    };
 
-auth.signInAnonymously().catch(console.error);
-auth.onAuthStateChanged(user => {
-  myUid = user ? user.uid : null;
-  document.getElementById('authState').textContent = myUid ? ('OK ' + myUid.slice(0,6)) : '未ログイン';
-});
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-const els = {
-  roomId: document.getElementById('roomId'),
-  roomIdLabel: document.getElementById('roomIdLabel'),
-  createRoom: document.getElementById('createRoom'),
-  joinRoom: document.getElementById('joinRoom'),
-  register: document.getElementById('register'),
-  leave: document.getElementById('leave'),
-  name: document.getElementById('name'),
-  gender: document.getElementById('gender'),
-  participants: document.getElementById('participants'),
-  startR1: document.getElementById('startR1'),
-  startR2: document.getElementById('startR2'),
-  clearPairs: document.getElementById('clearPairs'),
-  resetRoom: document.getElementById('resetRoom'),
-  pairsR1: document.getElementById('pairsR1'),
-  pairsR2: document.getElementById('pairsR2'),
-  count: document.getElementById('count'),
-  status: document.getElementById('status'),
-  copyLink: document.getElementById('copyLink'),
-  exportCsv: document.getElementById('exportCsv'),
-  me: document.getElementById('me'),
-};
+    let myName = "";
+    let myRole = "";
 
-let roomRef = null;
-let participantsRef = null;
-let roundsRef = null;
+    document.getElementById("joinBtn").onclick = async () => {
+      myName = document.getElementById("name").value.trim();
+      myRole = document.getElementById("role").value;
 
-function setRoom(id){
-  if(!id) return;
-  currentRoom = id.trim();
-  els.roomIdLabel.textContent = currentRoom || '-';
-  if(roomRef) roomRef.off();
-  if(participantsRef) participantsRef.off();
-  if(roundsRef) roundsRef.off();
-  roomRef = db.ref(`rooms/${currentRoom}`);
-  participantsRef = db.ref(`rooms/${currentRoom}/participants`);
-  roundsRef = db.ref(`rooms/${currentRoom}/rounds`);
-  roomRef.update({ createdAt: Date.now() });
-  participantsRef.on('value', snap => renderParticipants(snap.val() || {}));
-  roundsRef.on('value', snap => renderPairs(snap.val() || {}));
-  const url = new URL(location.href);
-  url.searchParams.set('room', currentRoom);
-  history.replaceState(null, '', url.toString());
-}
+      if (!myName) {
+        alert("名前を入力してください");
+        return;
+      }
 
-const urlParams = new URLSearchParams(location.search);
-if (urlParams.get('room')) {
-  els.roomId.value = urlParams.get('room');
-  setRoom(urlParams.get('room'));
-}
+      await addDoc(collection(db, "participants"), {
+        name: myName,
+        role: myRole
+      });
 
-els.createRoom.onclick = () => {
-  const id = els.roomId.value.trim() || `room-${Date.now()}`;
-  setRoom(id);
-  alert('ルームを作成しました。IDを参加者に共有してください。');
-};
-els.joinRoom.onclick = () => setRoom(els.roomId.value.trim());
-els.register.onclick = async () => {
-  if(!currentRoom) return alert('先にルームIDを入力して参加/作成してください。');
-  const name = els.name.value.trim();
-  const gender = els.gender.value;
-  if(!name || !gender) return alert('名前と役割を入力してください。');
-  myName = name; myGender = gender;
-  await participantsRef.child(myUid).set({ uid: myUid, name, gender, at: Date.now() });
-  els.me.textContent = `参加中: ${name} (${gender === 'M' ? 'リーダー' : 'パートナー'})`;
-};
-els.leave.onclick = async () => {
-  if(!currentRoom || !myUid) return;
-  await participantsRef.child(myUid).remove();
-  els.me.textContent = '未参加';
-};
+      document.getElementById("setup").style.display = "none";
+      document.getElementById("controls").style.display = "block";
+    };
 
-els.startR1.onclick = async () => {
-  const participants = await getParticipantsOnce();
-  const result = makePairs(participants);
-  await roundsRef.child('1').set({ pairs: result.pairs, triads: result.triads, at: Date.now() });
-  await roomRef.child('history').set(makeHistorySet(result));
-  status('Round 1 ペアを作成しました。', true);
-};
-els.startR2.onclick = async () => {
-  const participants = await getParticipantsOnce();
-  const historySnap = await roomRef.child('history').get();
-  const history = historySnap.val() || {};
-  const result = makePairsAvoidingHistory(participants, history, 500);
-  await roundsRef.child('2').set({ pairs: result.pairs, triads: result.triads, at: Date.now() });
-  const merged = Object.assign({}, history, makeHistorySet(result));
-  await roomRef.child('history').set(merged);
-  status('Round 2 ペアを作成しました（可能な限り重複回避）。', true);
-};
-els.clearPairs.onclick = async () => {
-  if(!confirm('結果表示をクリアします（履歴は維持）。よろしいですか？')) return;
-  await roundsRef.remove();
-};
-els.resetRoom.onclick = async () => {
-  if(!currentRoom) return;
-  if(!confirm('ルームを完全初期化します。参加者・結果・履歴が消えます。よろしいですか？')) return;
-  await roomRef.set({ createdAt: Date.now() });
-  status('ルームを初期化しました。', true);
-};
-els.copyLink.onclick = async () => {
-  if(!currentRoom) return alert('ルームIDを先に設定してください。');
-  const roomUrl = new URL(location.href);
-  roomUrl.searchParams.set('room', currentRoom);
-  await navigator.clipboard.writeText(roomUrl.toString());
-  alert('ルームURLをコピーしました！\n' + roomUrl.toString());
-};
-els.exportCsv.onclick = async () => {
-  const rounds = (await roundsRef.get()).val() || {};
-  const rows = [['round','group','member1','role1','member2','role2','member3','role3']];
-  const addRow = (round, idx, arr) => {
-    const names = arr.map(p=>p.name); const roles = arr.map(p=>p.gender==='M'?'L':'P');
-    rows.push([round, idx+1, names[0]||'', roles[0]||'', names[1]||'', roles[1]||'', names[2]||'', roles[2]||'']);
-  };
-  if(rounds['1']){ (rounds['1'].pairs||[]).forEach((p,i)=>addRow(1,i,p)); (rounds['1'].triads||[]).forEach((t,i)=>addRow(1,(rounds['1'].pairs||[]).length+i,t)); }
-  if(rounds['2']){ (rounds['2'].pairs||[]).forEach((p,i)=>addRow(2,i,p)); (rounds['2'].triads||[]).forEach((t,i)=>addRow(2,(rounds['2'].pairs||[]).length+i,t)); }
-  const csv = rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob = new Blob([csv], {type:'text/csv'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = `pairs_${currentRoom||'room'}.csv`; a.click();
-  URL.revokeObjectURL(url);
-};
+    // ペア作成ロジック
+    async function makePairs(round) {
+      // 既存の参加者を取得
+      const snap = await getDocs(collection(db, "participants"));
+      const leaders = [];
+      const partners = [];
+      snap.forEach(doc => {
+        const d = doc.data();
+        if (d.role === "leader") leaders.push(d.name);
+        else partners.push(d.name);
+      });
 
-function renderParticipants(listObj){
-  els.participants.innerHTML = '';
-  const list = Object.values(listObj);
-  els.count.textContent = list.length;
-  list.sort((a,b)=> (a.name||'').localeCompare(b.name||''));
-  for(const p of list){
-    const chip = document.createElement('div');
-    chip.className = 'chip ' + (p.gender === 'M' ? 'm' : 'f');
-    chip.textContent = `${p.name} (${p.gender==='M'?'L':'P'})`;
-    els.participants.appendChild(chip);
-  }
-}
+      let pairs = [];
+      let minLen = Math.min(leaders.length, partners.length);
 
-function renderPairs(rounds){
-  const r1 = rounds['1'] || {};
-  const r2 = rounds['2'] || {};
-  const myGroups = [];
-  if (myUid && myName) {
-    [r1, r2].forEach((roundData, idx) => {
-      const label = idx === 0 ? 'Round 1' : 'Round 2';
-      const search = (groups, triad=false) => {
-        (groups || []).forEach((g) => {
-          if (g.some(p => p?.uid === myUid)) {
-            myGroups.push({
+      // 通常ペア
+      for (let i = 0; i < minLen; i++) {
+        pairs.push([leaders[i], partners[i]]);
+      }
+
+      // 余り処理
+      let leftover = [];
+      if (leaders.length > partners.length) {
+        leftover = leaders.slice(minLen);
+      } else if (partners.length > leaders.length) {
+        leftover = partners.slice(minLen);
+      }
+
+      if (leftover.length > 0 && pairs.length > 0) {
+        // 余りを最初のペアに追加 → 3人組
+        pairs[0].push(leftover[0]);
+      }
+
+      await setDoc(doc(db, "rounds", `round${round}`), { pairs });
+    }
+
+    // リアルタイムでペア表示
+    onSnapshot(collection(db, "rounds"), (snapshot) => {
+      let resultsDiv = document.getElementById("results");
+      resultsDiv.innerHTML = "";
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        const roundTitle = document.createElement("h4");
+        roundTitle.textContent = docSnap.id;
+        resultsDiv.appendChild(roundTitle);
+
+        data.pairs.forEach(pair => {
+          const div = document.createElement("div");
+          div.className = "pair";
+          div.textContent = pair.join(" + ");
+          if (pair.includes(myName)) {
+            div.classList.add("highlight");
+          }
+          resultsDiv.appendChild(div);
+        });
+      });
+    });
+  </script>
+</body>
+</html>

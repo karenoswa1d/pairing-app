@@ -1,413 +1,182 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>ペアリングアプリ（Firestore版 / 管理者付き）</title>
+  <meta charset="UTF-8">
+  <title>ペアリングアプリ（Firestore版）</title>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
   <style>
-    :root{--bg:#0f172a;--panel:#111827;--line:#1f2937;--muted:#94a3b8;--ok:#16a34a;--warn:#f59e0b;}
-    *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:#e5e7eb}
-    header{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    header h1{font-size:18px;margin:0}
-    main{max-width:1100px;margin:0 auto;padding:18px}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-    @media (max-width: 820px){.grid{grid-template-columns:1fr}}
-    .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
-    h2{font-size:16px;margin:0 0 10px}
-    label{display:block;font-size:13px;color:#cbd5e1;margin:8px 0 6px}
-    input,select,button{font-size:14px}
-    input,select{width:100%;padding:10px 12px;background:#0b1220;color:#e5e7eb;border:1px solid #253043;border-radius:10px;outline:none}
-    input:focus,select:focus{border-color:#395079}
-    button{appearance:none;border:1px solid #395079;background:#243b55;color:#e5e7eb;border-radius:10px;padding:10px 12px;cursor:pointer}
-    button.primary{background:#1f5c2e;border-color:#2f7a44}
-    button.warn{background:#5e3b15;border-color:#8a5a1f}
-    button.danger{background:#5b1f1f;border-color:#7a2f2f}
-    button:disabled{opacity:.5;cursor:not-allowed}
-    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    .muted{color:var(--muted);font-size:12px}
-    .pair{display:flex;gap:8px;align-items:center;margin:6px 0;padding:10px 12px;background:#0b1220;border:1px dashed #253043;border-radius:10px}
-    .pair .round{font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid #2563eb}
-    .mine{background:rgba(22,163,74,.2);border-color:#22c55e}
-    .chip{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border:1px solid #253043;border-radius:999px;background:#0b1220;font-size:13px;margin:4px 6px 0 0}
-    .chip.l{border-color:#2563eb}
-    .chip.p{border-color:#ec4899}
-    .section-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-    .divider{height:1px;background:var(--line);margin:12px 0}
-    .note{padding:8px 10px;border-radius:8px;background:#0b1220;border:1px solid #253043;font-size:13px}
-    .ok{color:var(--ok)} .warnText{color:var(--warn)}
+    body { font-family: sans-serif; padding: 1rem; }
+    #adminPanel { border: 1px solid #ccc; padding: 1rem; margin-top: 1rem; }
+    .highlight { background: lightgreen; padding: 0.5rem; border-radius: 5px; }
+    .pair { margin: 0.3rem 0; padding: 0.3rem; border-bottom: 1px solid #eee; }
   </style>
 </head>
 <body>
-<header>
-  <h1>ペアリングアプリ（Firestore）</h1>
-  <div class="muted">リーダー／パートナーで2回以上の重複を避けて組み合わせ</div>
-</header>
+  <h1>ペアリングアプリ</h1>
 
-<main class="grid">
-  <!-- 左：参加登録 & 管理 -->
-  <section class="card">
-    <h2>参加登録</h2>
-    <label>名前</label>
-    <input id="name" type="text" placeholder="お名前">
-    <label>役割</label>
-    <select id="role">
-      <option value="リーダー">リーダー</option>
-      <option value="パートナー">パートナー</option>
-    </select>
-    <div class="row" style="margin-top:8px;">
-      <button class="primary" id="joinBtn">参加</button>
-    </div>
-    <div id="me" class="muted" style="margin-top:6px;"></div>
+  <div id="joinPanel">
+    <h2>参加</h2>
+    <input type="text" id="nameInput" placeholder="名前を入力"><br>
+    <label><input type="radio" name="role" value="リーダー">リーダー</label>
+    <label><input type="radio" name="role" value="パートナー">パートナー</label><br>
+    <button id="joinBtn">参加する</button>
+  </div>
 
-    <div class="divider"></div>
-    <h2>管理者ログイン</h2>
-    <label>管理者パスワード</label>
-    <input id="adminPass" type="password" placeholder="admin123">
-    <div class="row" style="margin-top:8px;">
-      <button id="adminLoginBtn">ログイン</button>
-      <span id="adminState" class="muted"></span>
-    </div>
+  <div id="resultPanel" style="display:none;">
+    <h2>結果</h2>
+    <div id="myPair" class="highlight"></div>
+    <h3>全体結果</h3>
+    <div id="allPairs"></div>
+  </div>
 
-    <div id="adminPanel" class="divider" style="display:none;"></div>
-    <div id="adminTools" style="display:none;">
-      <h2>管理者ツール</h2>
-      <div class="note" style="margin-bottom:8px;">
-        ラウンド数は <b>1〜5</b>。既存ラウンドの続きから自動採番します（例：round3の次はround4）。
-      </div>
-      <label>生成するラウンド数（1〜5）</label>
-      <input id="roundCount" type="number" min="1" max="5" value="1">
-      <div class="row" style="margin-top:8px;">
-        <button class="primary" id="genBtn">ペア生成</button>
-      </div>
+  <div id="adminPanel" style="display:none;">
+    <h2>管理者パネル</h2>
+    <label>ラウンド番号: <input type="number" id="roundNumber" min="1" max="5" value="1"></label>
+    <button id="makePairsBtn">ペア生成</button>
+    <button id="resetUsersBtn">全参加者リセット</button><br><br>
+    <input type="text" id="deleteNameInput" placeholder="削除する名前">
+    <button id="deleteUserBtn">指定ユーザ削除</button>
+  </div>
 
-      <div class="divider"></div>
-      <h2>参加者メンテナンス</h2>
-      <div class="row">
-        <button class="warn" id="resetParticipantsBtn">参加者を全削除</button>
-        <button class="warn" id="resetRoundsBtn">ラウンド結果を全削除</button>
-      </div>
-      <label style="margin-top:10px;">名前を指定して削除</label>
-      <div class="row">
-        <input id="deleteName" type="text" placeholder="削除する名前">
-        <button id="deleteUserBtn">削除</button>
-      </div>
-      <div id="adminMsg" class="muted" style="margin-top:6px;"></div>
-    </div>
-  </section>
-
-  <!-- 右：参加者一覧 & 結果 -->
-  <section class="card">
-    <div class="section-title">
-      <h2>参加者</h2>
-      <span class="muted">L=リーダー / P=パートナー</span>
-    </div>
-    <div id="participants"></div>
-
-    <div class="divider"></div>
-    <div class="section-title">
-      <h2>結果</h2>
-      <span id="status" class="muted">待機中</span>
-    </div>
-    <div id="results"></div>
-  </section>
-</main>
-
-<!-- Firebase (ESM) -->
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import {
-    getFirestore, collection, doc, setDoc, addDoc, getDocs, deleteDoc,
-    query, where, onSnapshot, orderBy
-  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, setDoc, doc, deleteDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-  // === Firebase 設定 ===
-  const firebaseConfig = {
-    apiKey: "AIzaSyAXKK19_CHOeY8BBRh_MuOWGSXe_aVV5rE",
-    authDomain: "makecouple-738b7.firebaseapp.com",
-    projectId: "makecouple-738b7",
-    appId: "1:592307602142:web:423c226103d6114f36b84f"
-  };
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+const firebaseConfig = {
+  apiKey: "AIzaSyAXKK19_CHOeY8BBRh_MuOWGSXe_aVV5rE",
+  authDomain: "makecouple-738b7.firebaseapp.com",
+  projectId: "makecouple-738b7",
+  appId: "1:592307602142:web:423c226103d6114f36b84f",
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
 
-  // === 状態 ===
-  let isAdmin = false;
-  let me = { name: null, role: null };
+// 管理者の固定UID (テスト用、実際は別管理が望ましい)
+const ADMIN_UID = "admin123"; 
+let currentUser = null;
+let myName = "";
 
-  // === ユーティリティ ===
-  const sleep = (ms)=>new Promise(r=>setTimeout(r,ms));
-  const shuffle = (arr) => {
-    for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; }
-    return arr;
-  };
-  const pairKey = (a,b) => [a,b].sort().join("||");
-
-  // === 参加登録（同名が既に居れば上書き） ===
-  async function join(){
-    const name = document.getElementById('name').value.trim();
-    const role = document.getElementById('role').value;
-    if(!name){ alert('名前を入力してください'); return; }
-    me = { name, role };
-
-    // 同名を検索してあれば更新、なければ新規
-    const qSnap = await getDocs(query(collection(db,'participants'), where('name','==',name)));
-    if(!qSnap.empty){
-      const first = qSnap.docs[0];
-      await setDoc(doc(db,'participants', first.id), { name, role, updatedAt: Date.now() });
-    }else{
-      await addDoc(collection(db, 'participants'), { name, role, createdAt: Date.now() });
-    }
-    document.getElementById('me').textContent = `参加中: ${name}（${role}）`;
+// 匿名ログイン
+signInAnonymously(auth).then(userCred => {
+  currentUser = userCred.user;
+  console.log("ログイン成功:", currentUser.uid);
+  if (currentUser.uid === ADMIN_UID) {
+    document.getElementById("adminPanel").style.display = "block";
   }
+});
 
-  // === 管理者ログイン ===
-  function adminLogin(){
-    const pw = document.getElementById('adminPass').value;
-    if(pw === 'admin123'){
-      isAdmin = true;
-      document.getElementById('adminState').textContent = '管理者ログイン中';
-      document.getElementById('adminPanel').style.display = 'block';
-      document.getElementById('adminTools').style.display = 'block';
-    }else{
-      alert('パスワードが違います');
-    }
-  }
+// 参加処理
+document.getElementById("joinBtn").onclick = async () => {
+  myName = document.getElementById("nameInput").value.trim();
+  const role = document.querySelector("input[name='role']:checked")?.value;
+  if (!myName || !role) { alert("名前と役割を入力してください"); return; }
 
-  // === 履歴（全ラウンド）からペアの集合を作る ===
-  async function loadHistorySet(){
-    const roundsSnap = await getDocs(collection(db,'rounds'));
-    const hist = new Set();
-    roundsSnap.forEach(d=>{
-      const data = d.data();
-      (data.pairs||[]).forEach(group=>{
-        // group は [A,B] or [A,B,C]。二者間の全組み合わせを履歴に入れる
-        for(let i=0;i<group.length;i++){
-          for(let j=i+1;j<group.length;j++){
-            hist.add(pairKey(group[i], group[j]));
-          }
-        }
-      });
-    });
-    return hist;
-  }
+  await addDoc(collection(db, "participants"), { name: myName, role: role });
+  document.getElementById("joinPanel").style.display = "none";
+  document.getElementById("resultPanel").style.display = "block";
+};
 
-  // === 1ラウンド分の組み合わせを作る（重複回避・3人組対応） ===
-  function makeOneRound(participants, historySet, maxRetry=400){
-    let leaders = participants.filter(p=>p.role==='リーダー').map(p=>p.name);
-    let partners = participants.filter(p=>p.role==='パートナー').map(p=>p.name);
+// ペア生成（管理者のみ）
+document.getElementById("makePairsBtn").onclick = async () => {
+  const snap = await getDocs(collection(db, "participants"));
+  const participants = snap.docs.map(doc => doc.data());
 
-    if(leaders.length===0 || partners.length===0){
-      return { pairs: [], warning: '片側の人数が0のため、男女混合の組は作成できません。' };
-    }
-
-    // リトライしながら履歴重複を最小化
-    let best = null;
-    let bestConflicts = Infinity;
-
-    for(let t=0;t<maxRetry;t++){
-      const L = shuffle([...leaders]);
-      const P = shuffle([...partners]);
-
-      const usedL = new Set(), usedP = new Set();
-      const pairs = [];
-      let conflicts = 0;
-
-      // まず重複しにくい相手を貪欲に割り当て
-      for(let i=0;i<Math.min(L.length,P.length);i++){
-        // 候補から履歴にない相手を探す
-        const l = L[i];
-        let chosenIdx = -1;
-        for(let j=0;j<P.length;j++){
-          if(usedP.has(j)) continue;
-          if(!historySet.has(pairKey(l,P[j]))){ chosenIdx = j; break; }
-        }
-        if(chosenIdx===-1){
-          // 仕方なく残っている最初の相手と組む（重複カウント）
-          for(let j=0;j<P.length;j++){ if(!usedP.has(j)){ chosenIdx=j; break; } }
-          conflicts++;
-        }
-        usedL.add(i); usedP.add(chosenIdx);
-        pairs.push([l, P[chosenIdx]]);
-      }
-
-      // 余り（必ずどちらか片側のみ）→ 先頭ペアに加えて男女混合3人組化
-      const leftoverL = L.filter((_,idx)=>!usedL.has(idx));
-      const leftoverP = P.filter((_,idx)=>!usedP.has(idx));
-      if(pairs.length>0){
-        if(leftoverL.length>0) pairs[0].push(leftoverL[0]);
-        else if(leftoverP.length>0) pairs[0].push(leftoverP[0]);
-      }else{
-        // 理論上ここには来ない（どちらか0の分岐でreturnしている）が保険
-        return { pairs: [], warning: '組み合わせを作成できませんでした。' };
-      }
-
-      if(conflicts < bestConflicts){
-        bestConflicts = conflicts;
-        best = pairs;
-        if(conflicts===0) break; // これ以上良くならない
-      }
-    }
-
-    // 次ラウンドの履歴更新を呼び出し元で行うため、ここではpairsのみ返す
-    return { pairs: best, warning: null };
-  }
-
-  // === 次に採番すべき round 番号を返す（既存の最大+1） ===
-  async function nextRoundNumber(){
-    const snap = await getDocs(collection(db,'rounds'));
-    let max = 0;
-    snap.forEach(d=>{
-      const r = d.data().round || 0;
-      if(r>max) max = r;
-    });
-    return max + 1;
-  }
-
-  // === 複数ラウンド生成（管理者） ===
-  async function generateRounds(){
-    if(!isAdmin) return;
-    const cnt = Math.max(1, Math.min(5, parseInt(document.getElementById('roundCount').value||'1',10)));
-
-    // 参加者取得
-    const pSnap = await getDocs(collection(db,'participants'));
-    const participants = pSnap.docs.map(d=>d.data());
-    if(participants.length<2){ alert('参加者が不足しています'); return; }
-
-    // 履歴セットを読み込み、生成ごとに更新していく
-    const history = await loadHistorySet();
-    let start = await nextRoundNumber();
-
-    for(let r=0; r<cnt; r++){
-      const { pairs, warning } = makeOneRound(participants, history);
-      if(!pairs || pairs.length===0){
-        document.getElementById('status').textContent = warning || '組み合わせ作成に失敗しました';
-        break;
-      }
-      // 履歴セットを更新（このラウンドも今後の回避対象に）
-      pairs.forEach(g=>{
-        for(let i=0;i<g.length;i++){
-          for(let j=i+1;j<g.length;j++){
-            history.add(pairKey(g[i], g[j]));
-          }
-        }
-      });
-
-      // 保存：ラウンドIDは round{n}
-      const roundNum = start + r;
-      await setDoc(doc(db,'rounds', `round${roundNum}`), {
-        round: roundNum,
-        pairs,
-        createdAt: Date.now()
-      });
-
-      // 少し間を置くと onSnapshot の反映順が安定
-      await sleep(30);
-    }
-    document.getElementById('status').textContent = `ペア生成完了（${cnt}ラウンド）`;
-  }
-
-  // === 管理者：参加者全削除 ===
-  async function resetParticipants(){
-    if(!isAdmin) return;
-    if(!confirm('参加者をすべて削除します。よろしいですか？')) return;
-    const snap = await getDocs(collection(db,'participants'));
-    let count = 0;
-    for(const d of snap.docs){ await deleteDoc(doc(db,'participants', d.id)); count++; }
-    document.getElementById('adminMsg').textContent = `参加者を ${count} 件削除しました。`;
-  }
-
-  // === 管理者：ラウンド結果全削除 ===
-  async function resetRounds(){
-    if(!isAdmin) return;
-    if(!confirm('ラウンド結果をすべて削除します。よろしいですか？')) return;
-    const snap = await getDocs(collection(db,'rounds'));
-    let count = 0;
-    for(const d of snap.docs){ await deleteDoc(doc(db,'rounds', d.id)); count++; }
-    document.getElementById('adminMsg').textContent = `ラウンド結果を ${count} 件削除しました。`;
-    document.getElementById('status').textContent = '待機中';
-  }
-
-  // === 管理者：名前指定で参加者削除 ===
-  async function deleteUserByName(){
-    if(!isAdmin) return;
-    const name = document.getElementById('deleteName').value.trim();
-    if(!name){ alert('名前を入力してください'); return; }
-    const snap = await getDocs(query(collection(db,'participants'), where('name','==',name)));
-    if(snap.empty){
-      document.getElementById('adminMsg').textContent = `「${name}」は見つかりませんでした。`;
-      return;
-    }
-    let count = 0;
-    for(const d of snap.docs){ await deleteDoc(doc(db,'participants', d.id)); count++; }
-    document.getElementById('adminMsg').textContent = `「${name}」を ${count} 件削除しました。`;
-  }
-
-  // === 参加者リストの購読 ===
-  onSnapshot(collection(db,'participants'), (snap)=>{
-    const el = document.getElementById('participants');
-    el.innerHTML = '';
-    const list = snap.docs.map(d=>d.data());
-    // 表示とカウント
-    const leaders = list.filter(p=>p.role==='リーダー');
-    const partners = list.filter(p=>p.role==='パートナー');
-    leaders.sort((a,b)=>a.name.localeCompare(b.name));
-    partners.sort((a,b)=>a.name.localeCompare(b.name));
-    leaders.forEach(p=>{
-      const div = document.createElement('span'); div.className='chip l'; div.textContent = `${p.name}（L）`; el.appendChild(div);
-    });
-    partners.forEach(p=>{
-      const div = document.createElement('span'); div.className='chip p'; div.textContent = `${p.name}（P）`; el.appendChild(div);
+  // 過去ペアを収集
+  const roundsSnap = await getDocs(query(collection(db, "rounds"), orderBy("createdAt")));
+  const pastPairs = new Set();
+  roundsSnap.forEach(doc => {
+    doc.data().pairs.forEach(pairObj => {
+      const pair = pairObj.members;
+      pastPairs.add(pair.sort().join("_"));
     });
   });
 
-  // === ラウンド結果の購読（常に昇順表示） ===
-  onSnapshot(collection(db,'rounds'), (snap)=>{
-    const rows = snap.docs.map(d=>d.data()).sort((a,b)=>(a.round||0)-(b.round||0));
-    const results = document.getElementById('results');
-    results.innerHTML = '';
-    if(rows.length===0){
-      document.getElementById('status').textContent = '待機中';
-      return;
+  let leaders = participants.filter(p => p.role === "リーダー");
+  let partners = participants.filter(p => p.role === "パートナー");
+  leaders = leaders.sort(() => Math.random() - 0.5);
+  partners = partners.sort(() => Math.random() - 0.5);
+
+  let pairs = [];
+
+  while (leaders.length > 0 && partners.length > 0) {
+    const leader = leaders.pop();
+    const partner = partners.pop();
+    const key = [leader.name, partner.name].sort().join("_");
+
+    if (!pastPairs.has(key)) {
+      pairs.push([leader.name, partner.name]);
+    } else {
+      // 重複時は仕方なくそのまま
+      pairs.push([leader.name, partner.name]);
     }
-    document.getElementById('status').textContent = `最新: Round ${rows[rows.length-1].round}`;
-    rows.forEach(r=>{
-      const h = document.createElement('div');
-      h.className = 'muted';
-      h.style.margin = '10px 0 6px';
-      h.textContent = `Round ${r.round}`;
-      results.appendChild(h);
-      (r.pairs||[]).forEach(group=>{
-        const div = document.createElement('div');
-        div.className = 'pair';
-        const roundTag = document.createElement('span');
-        roundTag.className = 'round';
-        roundTag.textContent = `R${r.round}`;
-        div.appendChild(roundTag);
-        const names = document.createElement('span');
-        names.textContent = ' ' + group.join('  ×  ');
-        div.appendChild(names);
-        if(me.name && group.includes(me.name)){ div.classList.add('mine'); }
-        results.appendChild(div);
-      });
-    });
+  }
+
+  // 余り -> 最初のペアに追加して3人組
+  if (leaders.length > 0) pairs[0].push(leaders.pop().name);
+  else if (partners.length > 0) pairs[0].push(partners.pop().name);
+
+  const roundNumber = document.getElementById("roundNumber").value;
+  await setDoc(doc(db, "rounds", "round" + roundNumber), {
+    round: roundNumber,
+    pairs: pairs.map(p => ({ members: p })), // ← ネスト配列禁止対策
+    createdAt: new Date()
   });
+};
 
-  // === ボタン紐付け ===
-  document.getElementById('joinBtn').onclick = join;
-  document.getElementById('adminLoginBtn').onclick = adminLogin;
-  document.getElementById('genBtn').onclick = generateRounds;
-  document.getElementById('resetParticipantsBtn').onclick = resetParticipants;
-  document.getElementById('resetRoundsBtn').onclick = resetRounds;
-  document.getElementById('deleteUserBtn').onclick = deleteUserByName;
+// 全ユーザ削除（管理者）
+document.getElementById("resetUsersBtn").onclick = async () => {
+  const snap = await getDocs(collection(db, "participants"));
+  snap.forEach(async d => { await deleteDoc(doc(db, "participants", d.id)); });
+  alert("参加者リセットしました");
+};
 
-  // === グローバル公開（必要なら） ===
-  window.join = join;
-  window.adminLogin = adminLogin;
-  window.generateRounds = generateRounds;
-  window.resetParticipants = resetParticipants;
-  window.resetRounds = resetRounds;
-  window.deleteUserByName = deleteUserByName;
+// 指定ユーザ削除（管理者）
+document.getElementById("deleteUserBtn").onclick = async () => {
+  const nameToDelete = document.getElementById("deleteNameInput").value.trim();
+  if (!nameToDelete) return;
+  const snap = await getDocs(collection(db, "participants"));
+  snap.forEach(async d => {
+    if (d.data().name === nameToDelete) {
+      await deleteDoc(doc(db, "participants", d.id));
+      alert(`${nameToDelete} を削除しました`);
+    }
+  });
+};
+
+// 結果表示リスナー
+const roundNumberInput = document.getElementById("roundNumber");
+roundNumberInput.addEventListener("change", () => listenRound(roundNumberInput.value));
+
+function listenRound(roundNumber) {
+  onSnapshot(doc(db, "rounds", "round" + roundNumber), (docSnap) => {
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      const allPairsDiv = document.getElementById("allPairs");
+      allPairsDiv.innerHTML = "";
+      let myPairText = "";
+      data.pairs.forEach(pairObj => {
+        const pair = pairObj.members;
+        const div = document.createElement("div");
+        div.className = "pair";
+        div.textContent = pair.join(" - ");
+        if (pair.includes(myName)) {
+          div.style.background = "lightblue";
+          myPairText = "あなたの組み合わせ: " + pair.join(" - ");
+        }
+        allPairsDiv.appendChild(div);
+      });
+      document.getElementById("myPair").textContent = myPairText;
+    }
+  });
+}
+
+// 初期ラウンド監視
+listenRound(roundNumberInput.value);
+
 </script>
 </body>
 </html>
